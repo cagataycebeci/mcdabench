@@ -1,0 +1,11 @@
+Description of Criteria
+C1 - CPU Frequency (GHz): Benefit (Higher speed is preferred)
+C2 - RAM Capacity (MB): Benefit (More memory is advantageous)
+C3 - Expansion Modules Count: Benefit (More expansion support is better)
+C4 - MTBF (Mean Time Between Failures (Hours)): Benefit (Longer MTBF is better)
+C5 - Communication Protocols Count: Benefit (More protocol support is better)
+C6 - Energy Consumption (Watt): Cost (Lower consumption is preferred)
+C7 - Installation Cost (Euro): Cost (Lower cost is preferred)
+C8 - Maintenance Cost (Euro/Year): Cost (Lower maintenance cost is preferred)
+C9 - Supported Programming Language Count: Benefit (More languages provide flexibility)
+C10 - Service Completion Time (Hours): Cost(Shorter completion time is preferred)

@@ -1,0 +1,15 @@
+Description of Criteria
+C1 - Stability (%): Represents how steady the aircraft remains during autopilot operation. Higher stability ensures safer flights.
+C2 - Fuel Efficiency (%): Measures the autopilot’s ability to optimize fuel consumption. Greater efficiency leads to lower fuel costs.
+C3 - Rapid Adaptation (%): Indicates how quickly the autopilot system adjusts to sudden changes in weather and flight conditions. A higher percentage ensures safer operation.
+C4 - Maneuver Precision (%): The ability of the aircraft to accurately execute maneuvers under autopilot control. Higher precision results in smoother flights.
+C5 - Passenger Comfort (%): Evaluates the level of vibrations, sudden movements, and abrupt maneuvers affecting passengers. A higher score ensures a more comfortable journey.
+C6 - Installation Cost ($M): The cost of installing and maintaining the autopilot hardware. Lower costs are preferable.
+C7 - Maintenance Cost ($M/year): Represents the annual expenses required for autopilot upkeep. Lower costs indicate better operational efficiency.
+C8 - Error Rate (%): The percentage of failures or system errors experienced in autopilot mode. A lower error rate means a more reliable system.
+C9 - Data Processing Speed (ms): Measures how quickly the autopilot processes sensor data and reacts. Lower values indicate faster decision-making.
+C10 - Cybersecurity Level (%): Reflects the autopilot system’s resistance to cyber threats and hacking attempts. A higher score ensures greater security.
+C11 - Emergency Response Time (s): The time required for the autopilot to react to emergency situations. Lower response times improve safety and reliability.
+C12 - Training Duration (weeks): The amount of time needed for pilots to learn and adapt to the autopilot system. Shorter training periods allow for faster implementation.
+
+

@@ -1,0 +1,465 @@
+---
+title: "Multi-Criteria Decision Making Using MEGAN Algorithm in mcdabench Package in R"
+author: "Cagatay Cebeci"
+date: "5 May 2025"
+encoding: UTF-8
+output: 
+  html_document:
+    theme: cosmo
+    highlight: tango
+    number_sections: true
+    toc: true             
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Multi-Criteria Decision Making Using MEGAN Algorithm in mcdabench Package in R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteTangle{TRUE}
+---
+<style>
+body{
+text-align: justify;}
+p{font-size:1.1em;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=11, fig.height=9)
+```
+# Introduction
+This vignette offers a practical guide on how to perform Multi-Criteria Decision Making (MCDM) using the MEGAN method implemented in the `mcdabench` package within the R environment.
+
+# Load Packages and Data Set
+
+## Install and load the package mcdabench
+The recent version of the package from CRAN is installed with the following command:
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+install.packages("mcdabench", dep=TRUE)
+```
+
+If you have already installed '`mcdabench`', you can load it into R working environment by using the following command:
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+library("mcdabench")
+```
+
+## Data set 
+This vignette utilizes a sample dataset named `egrids` which is included in the `mcdabench` package.
+In the decision matrix, there are 12 alternatives which are different energy management strategies or system configurations for optimizing smart grids. There are ten criteria in the decision matrix for evaluating the smart grid in terms of efficiency, reliability, environmental compatibility, and cost-effectiveness. Using Multi-Criteria Decision Analysis (MCDA) methods, the most suitable alternative can be selected.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+ data(egrids)
+ # Extract the decision matrix, benefit-cost vector and weights
+
+ dmatrix <- egrids$dmat
+ bcvec <- egrids$bcvec
+ weights <- egrids$weights
+ egrids
+```
+
+# Normalizing Decision Matrix
+Before applying MCDA methods, it is often necessary to calcnormal the decision matrix to bring all criteria values to a common scale. Normalization is a crucial step in MCDA to bring different 
+criteria values to a comparable scale. The `calcnormal` function in `mcdabench` provides various normalization techniques. Below, in order to demonstra normalization the decision matrix is 
+calcnormald using the methods "maxmin" and "sum", and the calcnormald matrices are stored in `nmatrix1` and `nmatrix2`, respectively. Subsequently, the calcnormald colums of these matrices are 
+displayed using `boxplotmcda` function.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+nmatrix1 <- calcnormal(dmatrix, bcvec=bcvec, type="maxmin")
+nmatrix2 <- calcnormal(dmatrix, bcvec=bcvec, type="sum")
+nmatrix3 <- calcnormal(dmatrix, bcvec=bcvec, type="vector")
+nmatrix4 <- calcnormal(dmatrix, bcvec=bcvec, type="zavadskas")
+nmatrix5 <- calcnormal(dmatrix, bcvec=bcvec, type="ratio")
+nmatrix6 <- calcnormal(dmatrix, bcvec=bcvec, type="enacc")
+```
+
+```{r fig.width=10, fig.height=8}
+opar <- par(mfrow=c(3,2))
+boxplotmcda(nmatrix1, mt="MaxMin")
+boxplotmcda(nmatrix2, mt="Sum")
+boxplotmcda(nmatrix3, mt="Vector")
+boxplotmcda(nmatrix4, mt="Zavadskas")
+boxplotmcda(nmatrix5, mt="Ratio")
+boxplotmcda(nmatrix6, mt="Enhanced Accuracy")
+par(opar)
+```
+
+The choice of normalization method significantly affects the scale and distribution of the calcnormald data. The boxplots visually highlight the difference in the scaling produced by the normalization methods. Based-on the example above:
+
+MaxMin normalization scales all values within the range of 0 to 1, as clearly indicated by the y-axis. The boxplots demonstrate a relatively wide spread of normalized values for each criterion, reflecting the full range of original data within this new scale.
+
+Enhanced Accuracy Normalization exhibits a very similar distribution and scaling trend to MaxMin normalization. The normalized values generally fall within a comparable range, indicating that it also effectively maps the data to a consistent, albeit slightly different, scale.
+
+In stark contrast, theSum Normalization method shows a much smaller range and a higher concentration of values within a narrow band (e.g., around 0.08 to 0.09 for most criteria). This suggests that the Sum method heavily compresses the data, making the distinctions between values less pronounced on a relative scale compared to MaxMin.
+
+Vector Normalization results in normalized values concentrated within a narrow, low range (e.g., around 0.3 for most criteria, with C5, C6, C9, and C10 showing slightly higher concentrations). This pattern indicates a specific type of scaling relative to the vector norm of each criterion, where the relative magnitudes within a criterion are preserved but the overall scale is quite compressed compared to MaxMin.
+
+Zavadskas-Turskis Normalization tends to compress the normalized values towards the higher end of the scale (closer to 1), with most criteria showing a relatively high mean. While it exhibits noticeable variability across criteria, the overall trend is to maintain values at a higher relative level compared to methods like Sum or Vector.
+
+Ratio or (Max) Normalization presents a more varied and sometimes extreme impact on the data scale. While some criteria (like C1-C4) are scaled close to 1, others (like C5, C6, C9, and C10) are heavily compressed towards very low values (closer to 0). This suggests that Ratio normalization emphasizes differences more prominently when original values are disparate, pushing smaller values to a much lower relative scale and larger values towards the maximum.
+
+# Calculation of Weights
+The choice of objective weighting method has a substantial impact on the determined importance of each criterion. 
+The weighting methods further highlights the diversity of approaches and the importance of selecting a method that aligns with the specific characteristics 
+and objectives of the multi-criteria decision analysis. 
+
+The following code chunk calculates the weights for the criteria using various weighting methods. The `wmatrix` output displays the specific weight assigned to each criterion by each of these methods. Parallel Coordinate Plots are effective for comparing the profiles of many options across multiple dimensions simultaneously, allowing for the assessment of similarities, dissimilarities, and the identification of underlying patterns.
+For this reason, the visualization provided by `parcorplot` helps for understand and compare these different weighting profiles.
+
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+nmatrix <- calcnormal(dmatrix, bcvec, type="vector")
+critwei <- calcweights(nmatrix, bcvec=bcvec, type="critic")
+entwei <- calcweights(nmatrix, bcvec=bcvec, type="entropy")
+equwei <- calcweights(nmatrix, bcvec=bcvec, type="equal")
+giniwei <- calcweights(nmatrix, bcvec=bcvec, type="gini")
+sdevwei <- calcweights(nmatrix, bcvec=bcvec, type="sdev")
+merecwei <- calcweights(nmatrix, bcvec=bcvec, type="merec")
+mpsiwei <- calcweights(nmatrix, bcvec=bcvec, type="mpsi")
+geomwei <- calcweights(nmatrix, bcvec=bcvec, type="geom")
+rocwei <- calcweights(nmatrix, bcvec=bcvec, type="roc")
+rswei <- calcweights(nmatrix, bcvec=bcvec, type="rs")
+
+wmatrix <- cbind(Equal=equwei, Merec=merecwei, Geometric=geomwei, Gini=giniwei, 
+           Critic=critwei, Mpsi=mpsiwei, StdDev=sdevwei, Rs=rswei, Roc=rocwei, Entropy=entwei)
+print(round(wmatrix, 3))
+```
+
+
+```{r fig.width=10, fig.height=6}
+corplot(wmatrix, colpal=c("orange", "dodgerblue","red"), xlab="Criterion", ylab="Weighting Method", title="Weights by Criteria", shape="square")
+parcorplot(wmatrix, xl="Weighting Methods", yl="Weight", lt="Criteria")
+```
+The parallel coordinate plot, alongside the provided weight matrix, illustrates the weights assigned to ten criteria (C1 through C10) by ten distinct objective weighting methods: Equal, Merec, Geometric, Gini, Critic, Mpsi, StdDev (Standard Deviation), Rs, Roc, and Entropy. Each criterion is represented by a colored line, and its vertical position along the x-axis indicates the weight allocated by the corresponding weighting method.
+
+* __Diverse Importance Assignments:__ The plot clearly demonstrates that different objective weighting methods result in significantly varying assessments of criterion importance. For instance, C6 (gray line) receives relatively low weights from the Equal, Gini, and Roc methods but is assigned substantially higher weights by the Merec, Geometric, Critic, Mpsi, and StdDev methods. Similarly, C1 (red line) is heavily weighted by Rs and Roc methods, standing out significantly, while C8 (dark blue line) receives high weights from Critic, Mpsi, and StdDev methods.
+
+* __Method Sensitivity Across Criteria:__ The sensitivity of criterion weights to the chosen method varies considerably. Criteria such as C5 (light blue line) exhibit dramatic fluctuations in weight across the different methods, receiving high weights from Critic, StdDev, and Entropy, but relatively lower weights from Gini, Rs, and Roc. Conversely, C2 (green line) maintains a more consistent, moderate weighting across most methods.
+
+* __Relative Consistency for Some Methods:__ Certain methods demonstrate more consistent relative weightings across the criteria compared to others, or show similar profiles. For example, the weight profiles generated by the Critic (purple line) and Standard Deviation (orange line) methods appear to follow somewhat similar trends, both assigning higher weights to C5 and C8, and lower weights to C7 and C9. To some extent, the profiles of the Merec and Geometric methods also show similarities, generally assigning more uniform weights across criteria.
+
+* __Distinctive Weighting Behaviors:__ Each method offers a unique perspective on criterion importance:
+
+    * The Entropy method often yields a distinct pattern of weights, assigning the highest weights to C5 and C8, suggesting its focus on the dispersion of criterion values leads to a different evaluation of importance compared to methods that consider variance or inter-criterion correlation.
+    * The Roc (Rank Order Centroid) method produces a highly distinctive pattern, assigning a significantly high weight to C1 (red line) and relatively low weights to C6, C7, C9, and C10, reflecting its emphasis on rank-based importance.
+    * The Gini coefficient method also results in a distinct set of weights, reflecting its sensitivity to the distribution of values within each criterion, with higher weights for C1, C3, C5, and C8.
+
+* __Equal Weighting as a Benchmark:__ The Equal method serves as a crucial baseline by assigning an identical weight (0.1 for the provided data) to all criteria. This allows for a direct visual comparison of how objective methods deviate from this uniform distribution, highlighting which criteria gain or lose importance based on the method's underlying mathematical principles.
+
+# Run MEGAN with Default Parameters
+The following code snippet runs the MEGAN algorithm using the `dmatrix` decision matrix and the `bcvec` benefit-cost vector. 
+For this execution, Gini weighting and MaxMin normalization are explicitly specified. Notably, while `megan` intrinsically uses Gini 
+weighting and MaxMin normalization, the function is flexible, allowing the user to override these defaults by specifying pre-calculated 
+weights and alternative normalization methods. The results are stored in `resmegan_1`. The structure of this result object, as displayed by 
+the `str` function, contains various internal components of the MEGAN calculation.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+resmegan_1 <- megan(dmatrix, bcvec=bcvec, weights="gini", normethod="maxmin", thr=0, tht=NULL)
+str(resmegan_1)
+```
+
+In the `resmegan_1` above, MEGAN's result object, the `superiority` component contains the superiority of alternatives as percentages over the worst alrnative. 
+The ranking result for alternatives is stored in the component of `rank`.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+# Superiority scores
+ superiority <- resmegan_1$superiority
+ print(superiority)
+# Ranking of Alternatives
+ rank <- resmegan_1$rank
+ print(rank)
+```
+
+As seen in the output, the `superiority` vector presents the superiority scores for alternatives, ranging from `0` to `442`. 
+The worst alternative, `G12v, consistently has a score of `0v. Higher scores indicate greater overall superiority. The rank vector 
+provides the final ranks of the alternatives based on their superiority scores. Lower numbers indicate a better (higher) rank. 
+In this run, `G7` (superiority: `442`, rank: `1`) is identified as the best alternative, while `G12v (superiority: `0`, rank: `12`) 
+is determined to be the worst-performing alternative.
+
+MEGAN stands out as a novelMCDA algorithm characterized by its function-free approach and relative insensitivity to weight variations. 
+While the core MEGAN function was executed above using default parameters, the following code chunk demonstrates MEGAN's gradual weighting algorithm. 
+This variant evaluates the decision matrix with weights that are systematically varied (either increasing or decreasing) across criteria, using 
+the same initial decision matrix and a specific set of weights (in this case, `giniwei` and `maxmin` normalization from the previous megan example). 
+This approach helps to further explore the robustness and behavior of the MEGAN method under changing preference structures.
+
+While the core MEGAN function was executed above using specific Gini weighting and MaxMin normalization, the following code chunk 
+demonstrates MEGAN's gradual weighting algorithm. This variant evaluates the decision matrix with weights that are systematically varied 
+(either increasing or decreasing) across criteria, using the same initial decision matrix and a specific set of `weights` 
+(in this case, `giniwe` and `"maxmin"` normalization from the previous `megan` example). This approach helps to further explore the 
+robustness and behavior of the MEGAN method under changing preference structures. The `ratepar` sequence defines the increments for 
+these gradual weight changes.
+
+```{r megan2run, eval=TRUE, message=FALSE, warning=FALSE}
+ratepar <- seq(0.01, 0.5, 0.05)
+giniwei <- calcweights(nmatrix, bcvec=bcvec, type="gini")
+resmegan_2 <- megan2(dmatrix, bcvec=bcvec, weights=giniwei, normethod="maxmin", 
+  weimethod="gradual", rp=ratepar, thr=0)
+  
+ str(resmegan_2)
+ rank <- resmegan_2$rank
+ print(rank)
+```
+In this specific gradual weighting scenario with Gini weights and MaxMin normalization, the final ranking derived by 'megan2' remains 
+identical to the initial 'megan' run. 'G7' (rank: '1') is still the top-ranked alternative, and 'G12' (rank: '12') remains the lowest. 
+This consistency suggests that for this particular dataset and initial Gini weights, the MEGAN algorithm demonstrates robustness to the 
+tested range of gradual weight changes. This observation further supports MEGAN's characteristic insensitivity to weight variations, 
+at least within the explored ratepar range.
+
+As a conclusion, the MEGAN algorithm's ranking by superiority percentages provides a distinct perspective on the ranking of alternatives 
+compared to traditional MCDA methods based solely on relative differences. The superiority ranking results effectively highlight the 
+overall dominance relationships between alternatives, potentially revealing nuances that might be overlooked by simply considering 
+the magnitude of relative differences. Furthermore, the observed ties in the srank suggest the formation of groups of alternatives that 
+exhibit similarly low levels of overall superiority, indicating close performance in certain scenarios. This innovative approach, 
+by explicitly incorporating pairwise comparisons and superiority thresholds, offers a more comprehensive evaluation, thereby leading to 
+a potentially more robust and insightful ranking of alternatives.
+
+# Different Types of Thresholds
+A classic ranking typically states, "Alternative A outranks Alternative B," but it often fails to answer a more nuanced question: 
+"By how much is Alternative A superior?" MEGAN addresses this by providing superiority percentages. For example, 
+in the result of previous run (`resmegan_1`), `G12` has the minimum superiority score (`0`), indicating it is the worst-performing alternative 
+relative to others in the set. Conversely, `G7` exhibits the highest superiority score (`442`), suggesting it is 442% "higher" than the 
+base (worst) alternative, `G12`. For instance, Alternative `G1` has a superiority score of `332`, and Alternative `G6` has `326`. Based on 
+these raw superiority values, both `G1` and `G6` clearly outrank the base alternative `G12`. However, the difference between their 
+individual superiority scores (`332` vs. `326`) is quite small. A traditional ranking, based on strict numerical order, would simply 
+place `G1` above `G6` (`G1` > `G6`).
+
+However, if these small differences were evaluated against a custom threshold, `G1` and `G6` could potentially receive the same rank. 
+Specifically, if the difference in superiority scores between two consecutive alternatives falls below a defined threshold, they 
+are treated as having the same rank, implying no statistically or practically significant preference between them. The rank values 
+in MEGAN are calculated precisely in this manner, based on a threshold value passed to the `thr` argument or derived from the `tht` 
+argument. Consequently, alternatives whose superiority differences fall below this threshold receive the same rank.
+
+MEGAN offers flexibility in defining these thresholds:
+
+* `thr` argument: Allows the user to specify a direct numerical threshold. If `thr=0`, no difference is tolerated, and a strict 
+       ranking is maintained (unless values are exactly identical).
+
+* `tht` argument: When `thr=NULL`, the `tht` argument can be used to define a threshold based on statistical properties of the 
+       differences in superiority scores:
+    * `"p5"`: Uses the 5th percentile of differences as the default threshold level.
+    * `"p25"` (or `"Q1"`): Uses the 25th percentile (first quartile) of differences.
+    * `"sdev"`: Uses the standard deviation of differences.
+
+In the following code snippet, MEGAN is run with different levels and types of thresholds to demonstrate their impact on the final ranking.
+The `giniwei` (Gini weights) are used for consistency.
+
+```{r thresholds, eval=TRUE, message=FALSE, warning=FALSE}
+rankt0 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=0)$rank
+rankt10 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=10)$rank
+rankp5 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=NULL, tht="p5")$rank
+rankp25 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=NULL, tht="p25")$rank
+ranksdev <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=NULL, tht="sdev")$rank
+
+meganranks_2 <- cbind(T0=rankt0, T10=rankt10, P5=rankp5, P25=rankp25, SD=ranksdev)
+meganranks_2 <- t(meganranks_2)
+print(meganranks_2)
+```
+The output matrix `meganranks_2` clearly shows how different threshold settings lead to variations in the final rankings. For instance,
+the `T0` (zero threshold) and `P5` (5th percentile) rankings are identical for all alternatives, suggesting very little change in 
+superiority at the lower end of the distribution. However, when a fixed threshold of `T10` (`10` percent) is applied, or when thresholds 
+based on 'P25' (25th percentile) and 'SD' (standard deviation) are used, we observe changes in the ranks, particularly where alternatives 
+were previously very close. For example, the ranks for `G6`, `G9`, `G10`, `G11`, and `G12` shift slightly between different threshold 
+methods. The ability to define such thresholds allows decision-makers to account for practical indifferences between alternatives 
+that are not significantly different in their performance.
+
+Finally, a heatmap is generated to visually compare these different ranking profiles across alternatives:
+
+```{r fig.width=10, fig.height=6}
+rankheatmap(meganranks_2, colpal=1, cellnotes=TRUE, tcol="black", dendro="row")
+```
+
+In addition to the ranking variations, it is crucial to understand the actual numerical values of the thresholds being applied. 
+The `thresholdval` component of the `megan` function's output allows us to retrieve these.
+
+In the example, the assigned and computed thresholds can be shown using the code chunk below:
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+thr0 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=0)$thresholdval
+thr10 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=10)$thresholdval
+thrp5 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=NULL, tht="p5")$thresholdval
+thrp25 <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=NULL, tht="p25")$thresholdval
+thrsdev <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=NULL, tht="sdev")$thresholdval
+thrp5 <- unname(thrp5); thrp25 <- unname(thrp25)
+
+meganthresholds <- c(T0=thr0, T10=thr10, P5=thrp5, P25=thrp25, SD=thrsdev)
+print(meganthresholds)
+```
+This output clearly shows the specific numerical thresholds that were used for each ranking scenario:
+
+* T0: A threshold of 0, meaning only exact matches receive the same rank.
+* T10: A fixed user-defined threshold of 10.
+* P5: A calculated threshold of 0.5, representing the 5th percentile of differences in superiority scores.
+* P25: A calculated threshold of 1.0, representing the 25th percentile (or first quartile) of differences.
+* SD: A calculated threshold of approximately 7.17, representing the standard deviation of differences.
+
+These explicit threshold values provide critical context for interpreting the meganranks_2 output, demonstrating how subtle 
+differences in threshold definition can lead to distinct grouping of alternatives and variations in their final ranks.
+
+# Apply MEGAN with Different Weighting Methods
+As previously discussed, MEGAN is designed to be relatively insensitive to variations in criterion weights. To further demonstrate this 
+characteristic, the following code chunk runs the MEGAN algorithm for eight different objective weighting methods: Equal, Critic, StdDev 
+(Standard Deviation), Gini, Geometric, Merec, Mpsi, and Entropy. For consistency across these runs, the MaxMin normalization method and a 
+P5 (5th percentile) threshold are applied.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+thrval <- 0L
+thtmet <- "p5"
+critrank <- megan(dmatrix, bcvec=bcvec, weights=critwei, thr=thrval, tht=thtmet)$rank
+entrank <- megan(dmatrix, bcvec=bcvec, weights=entwei, thr=thrval, tht=thtmet)$rank
+equrank <- megan(dmatrix, bcvec=bcvec, weights=equwei, thr=thrval, tht=thtmet)$rank
+ginirank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, thr=thrval, tht=thtmet)$rank
+mpsirank <- megan(dmatrix, bcvec=bcvec, weights=mpsiwei, thr=thrval, tht=thtmet)$rank
+sdevrank <- megan(dmatrix, bcvec=bcvec, weights=sdevwei, thr=thrval, tht=thtmet)$rank
+geomrank <- megan(dmatrix, bcvec=bcvec, weights=geomwei, thr=thrval, tht=thtmet)$rank
+merecrank <- megan(dmatrix, bcvec=bcvec, weights=merecwei, thr=thrval, tht=thtmet)$rank
+
+meganranks_3 <- cbind(Equal=equrank, Critic=critrank, StdDev=sdevrank, Gini=ginirank,
+  Geometric=geomrank, Merec=merecrank, Mpsi=mpsirank, Entropy=entrank)
+rownames(meganranks_3) <- rownames(dmatrix)
+print(meganranks_3)
+
+respref <- rankaggregate(t(meganranks_3), topk=1)
+
+print(respref$preference_table)  # Preference table
+print(respref$preference_ranking) # Preference ranking
+```
+
+Surprisingly, the resulting `meganranks_3` matrix reveals that all eight distinct objective weighting methods yield identical rankings 
+for all alternatives when MEGAN is applied with MaxMin normalization and a P5 threshold. This remarkable consistency strongly supports 
+the claim that MEGAN is indeed highly insensitive to the choice of objective weighting method, at least under these specific normalization 
+and threshold conditions. This implies that the method's internal mechanics for calculating superiority and ranking are robust to 
+different initial criterion importance assignments.
+
+To visually confirm this remarkable consistency, a heatmap of these rankings is generated.
+
+```{r fig.width=10, fig.height=6}
+rankheatmap(meganranks_3, colpal=1, cellnotes=TRUE, tcol="black", dendro="column")
+```
+To understand the relationships between the rankings produced by different weighting methods, we can perform a Principal Component Analysis
+(PCA) on the meganranks_3 matrix. This helps visualize the similarities and differences in how each weighting method ranks the alternatives.
+The `rankpca` function is used for this purpose, with `biplot=TRUE` to show both the alternatives and the weighting methods on the same plot.
+
+```{r fig.width=10, fig.height=6}
+a <- rankpca(meganranks_3, biplot=TRUE, reverse=FALSE)
+```
+# Comparing Normalization Methods using GINI Weights
+While the previous section demonstrated MEGAN's remarkable insensitivity to various objective weighting methods, it's equally important 
+to assess its behavior under different normalization techniques. Normalization is a critical preprocessing step in MCDA that transforms 
+criteria values to a common scale, and its choice can significantly influence the final outcome in many algorithms.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+thrval <- NULL
+thtmet <- "p5"
+enhrank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, normethod="enhanced", thr=thrval, tht=thtmet)$rank
+ratiorank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, normethod="ratio", thr=thrval, tht=thtmet)$rank
+maxminrank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, normethod="maxmin", thr=thrval, tht=thtmet)$rank
+sumrank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, normethod="sum", thr=thrval, tht=thtmet)$rank
+vecrank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, normethod="vector", thr=thrval, tht=thtmet)$rank
+zavrank <- megan(dmatrix, bcvec=bcvec, weights=giniwei, normethod="zavadskas", thr=thrval, tht=thtmet)$rank
+meganranks_4 <- cbind(Enhanced=enhrank, MaxMin=maxminrank, 
+   Sum=sumrank, Ratio=ratiorank, Vector=vecrank, Zavadskas=zavrank)
+rownames(meganranks_4) <- rownames(dmatrix)
+print(meganranks_4)
+```
+Unlike the consistency observed across different weighting methods, the `meganranks_4` matrix reveals some variations in rankings across 
+different normalization methods. While many alternatives retain their ranks across methods (e.g., G3, G4, G8, G10, G11, G12 show perfect 
+consistency), slight shifts occur for others. For instance:
+
+* G5 is ranked 1st by 'Sum' and 'Zavadskas' methods, but 2nd by 'Enhanced', 'MaxMin', 'Ratio', and 'Vector'.
+* G7 is ranked 1st by 'Enhanced', 'MaxMin', 'Ratio', and 'Vector', but 2nd by 'Sum' and 'Zavadskas'.
+* G1 and G9 maintain a consistent tied rank of 4.5 across all normalization methods.
+
+This pattern suggests that MEGAN's ranking, while robust to weighting, may slightly be influenced by the choice of normalization method. 
+This highlights the importance of carefully selecting an appropriate normalization technique, as it can subtly alter the relative 
+performances of alternatives before they are evaluated by MEGAN's core mechanism.
+
+To visually analyze these differences and similarities, a heatmap of the rankings is generated:
+
+```{r fig.width=10, fig.height=6}
+rankheatmap(meganranks_4, colpal=1, cellnotes=TRUE, tcol="black", dendro="both")
+```
+
+The heatmap visually confirms the observed variations. While clusters of consistent ranks exist, the distinct columns for 'Sum' and 'Zavadskas' (particularly for G5 and G7) demonstrate how different normalization scales can lead to different relative positions for closely performing alternatives. The dendrograms would further highlight the clustering of similar ranking profiles.
+
+```{r fig.width=10, fig.height=6}
+a <- rankpca(meganranks_4, biplot=TRUE, reverse=FALSE)
+```
+
+To derive a single, consolidated preference order from these varied rankings, we again employ the rankaggregate function. This step is
+particularly valuable here, as the individual normalization methods did not yield perfectly identical results.
+
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+respref <- rankaggregate(t(meganranks_4), topk=1)
+print(respref$preference_table)  # Outranking table
+print(respref$preference_ranking)  # Outranking flow
+```
+The aggregation results reflect the slight variations observed. The preference_table and preference_ranking show that for most 
+aggregation methods (RANKSUM, MEDIAN, BORDACNT, COPELAND, KEMYNG), `G7` is the consensus top-ranked alternative (rank 1), closely 
+followed by `G5` (rank 2) and `G2` (rank 3). Notably, the MARKOV method, while still placing `G5` and `G7` at the top, 
+swaps their positions, ranking `G5` as 1st and `G7` as 2nd. This slight disagreement for the top two alternatives is a direct 
+consequence of the differing individual rankings obtained from the normalization methods.
+
+# Weights Sensitivity Analysis
+Beyond applying different static weighting methods, it's crucial to assess an MCDA algorithm's sensitivity to gradual changes in criterion
+weights. This type of sensitivity analysis helps determine how robust the ranking results are to minor fluctuations or uncertainties in 
+the assigned importance of criteria. The `weisana` (weighting sensitivity analysis) function from the `mcdabench` package facilitates this by 
+systematically varying individual criterion weights and observing the impact on the final ranking.
+
+In this example, we perform a gradual weighting sensitivity analysis using the `critwei` (Critic weights) as the base. The `weipars` argument
+defines the range of gradual changes: increments of 0.01, 0.05, 0.10, and decrements of -0.01, -0.05, -0.10. The `mcdamethod` is set to 
+`megan`, with `methodpars` specifying `thr=0` (no threshold for differences, implying a strict ranking unless values are identical).
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+mp <- list(thr=0)
+wp <- list(rp = c(0.01, 0.05, 0.10, -0.01, -0.05, -0.10))
+megangrawei <- weisana(dmatrix = dmatrix, bcvec = bcvec, weights=critwei,
+     weimethod = "gradual", weipars = wp,
+     mcdamethod = megan, methodpars = mp,
+     sensplot=FALSE)
+rankmat <- megangrawei$ranking_matrix    # Ranking matrix
+senstable <- megangrawei$sensitivity_table # Different rankings summary table
+head(rankmat)  # Rank matrix
+print(senstable)
+
+```
+The `weisana` function returns two key components for analysis: `ranking_matrix` (containing the ranks for each variation) and 
+`sensitivity_table` (summarizing distinct ranking patterns).
+
+The `rankmat` output shows the ranks of alternatives for the initial (`init`) weights and for various gradual changes applied to each 
+criterion (e.g., `C1-1%`, `C1-5%`, etc.). Remarkably, the `sensitivity_table` indicates only one distinct ranking pattern (`Ranking_1`) 
+throughout the entire sensitivity analysis, accounting for 100% of the scenarios (61 total scenarios, representing gradual changes 
+for each of the 10 criteria in both increasing and decreasing directions, plus the initial state). This finding further underscores 
+MEGAN's strong robustness to gradual changes in criterion weights. Regardless of the small increments or decrements applied to individual 
+criterion weights, the final ranking order of alternatives remains unchanged.
+
+A heatmap of the rankmat visually confirms this exceptional consistency.
+
+```{r fig.width=10, fig.height=6}
+rankheatmap(rankmat, colpal=4, cellnotes=FALSE, tcol="black", dendro="both")
+a <- rankpca(rankmat, biplot=TRUE, reverse=FALSE)
+```
+
+# Conclusions
+
+In the first example, the weighting methods Equal, Critic, StdDev, Gini, Geometric, and Merec demonstrate a very high 
+degree of consistency in the rankings produced for the 12 alternatives. The heatmap clearly shows very similar color patterns across 
+these six methods for each alternative. The numerical table also confirms this visual observation, with most alternatives receiving the 
+same or very close ranks across these methods. This suggests that when using these particular weighting approaches, the MEGAN algorithm 
+yields stable and consistent ranking outcomes.
+
+Below, we can offer a general interpretation of the MEGAN algorithm's sensitivity and consistency for ranking in this specific problem:
+
+When employing weighting methods that rely on similar principles (such as those based on variance, correlation, or simple averaging), 
+the MEGAN algorithm demonstrates a strong tendency to produce consistent ranking results. This indicates that the algorithm is robust 
+when the emphasis on criteria importance is determined through related approaches.
+
+As observed in the examples above, the MEGAN algorithm exhibits a notable degree of consistency across various normalization methods 
+for this particular problem. In the third example, the perfect agreement among all normalization methods underscores the algorithm's 
+stability in combining the weighted and normalized criteria values to arrive at the final ranking.
+
+For this specific example problem, the MEGAN algorithm appears to be highly consistent in its ranking outcomes when similar types of 
+weighting methods are used and across a range of normalization methods. The potential for sensitivity seems to arise primarily when 
+employing weighting methods that diverge significantly in their underlying principles for determining criteria importance, as seen 
+with the Entropy method. Therefore, while the MEGAN algorithm can be quite robust under certain conditions, it's crucial to be mindful 
+of the potential impact of fundamentally different weighting strategies on the final ranking. The choice of weighting method, especially 
+if it differs significantly from others being considered, warrants careful attention in the analysis.

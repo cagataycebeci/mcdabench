@@ -1,0 +1,10 @@
+citHeader("To cite mcdabench in publications use:")
+
+bibentry(
+  bibtype = "Manual",
+  title    = "mcdabench: Benchmarking for Multi-Criteria Decision Analysis",
+  author   = c(person("Cagatay", "Cebeci")),
+  year     = "2025",
+  version  = "1.0.1",
+  note     = "Cebeci, C. (2025). mcdabench: Benchmarking for Multi-Criteria Decision Analysis, R package version 1.0.1."
+)

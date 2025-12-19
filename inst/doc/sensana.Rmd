@@ -1,0 +1,262 @@
+---
+title: "Sensitivity & Stability Analysis for MCDA Methods"
+author: "Cagatay Cebeci"
+date: "29 May 2025"
+encoding: UTF-8
+output: 
+  html_document:
+    theme: journal
+    highlight: kate
+    number_sections: true
+    toc: true             
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Sensitivity & Stability Analysis for MCDA Methods}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteTangle{TRUE}
+---
+<style>
+body{text-align: justify}
+p{font-size: 1.1em;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=11, fig.height=9)
+```
+
+# Introduction
+This vignette is a comprehensive tutorial on how to use test the stability and sensitivity of MCDA methods.
+# Required Packages
+The recent version of the package `mcdabench` from CRAN is installed with the following command:
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+install.packages("mcdabench", dep=TRUE)
+```
+
+If you have already installed `mcdabench`, you can load it into R working environment by using the following command:
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+library(mcdabench)
+```
+
+# Data Set 
+As an example, the `egrids` dataset in the package contains simulated data representing different energy management strategies or system configurations for optimizing smart grids. 
+The dataset includes 12 alternatives and 10 criteria, which evaluate smart grids in terms of efficiency, reliability, environmental compatibility, and cost-effectiveness.
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+ # Load the data set
+ data(egrids)
+
+ # Extract the decision matrix, benefit-cost vector and weights
+ dmat <- egrids$dmat
+ bc <- egrids$bcvec
+ userwei <- egrids$weights
+ print(egrids)
+```
+
+# Calculation of Weights
+In the following code snippet, the weights are calculated applying various methods on the decision matrix.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+nmat <- calcnormal(dmat, bc, type="vector")
+critwei <- calcweights(dmatrix=nmat, bcvec=bc, type="critic")
+entwei <- calcweights(dmatrix=nmat, bcvec=bc, type="entropy")
+equwei <- calcweights(dmatrix=nmat, bcvec=bc, type="equal")
+giniwei <- calcweights(dmatrix=nmat,bcvec=bc, type="gini")
+sdevwei <- calcweights(dmatrix=nmat, bcvec=bc, type="sdev")
+merecwei <- calcweights(dmatrix=nmat, bcvec=bc, type="merec")
+mpsiwei <- calcweights(dmatrix=nmat, bcvec=bc, type="mpsi")
+geomwei <- calcweights(dmatrix=nmat, bcvec=bc, type="geom")
+rocwei <- calcweights(dmatrix=nmat, bcvec=bc, type="roc")
+rswei <- calcweights(dmatrix=nmat, bcvec=bc, type="rs")
+wmatrix <- cbind(Equal=equwei, Merec=merecwei, Geometric=geomwei, Gini=giniwei, 
+    Critic=critwei, Mpsi=mpsiwei, Entropy=entwei, StdDev=sdevwei, Rs=rswei, Roc=rocwei )
+print(round(wmatrix,3))
+```
+
+```{r fig.width=10, fig.height=6}
+parcorplot(wmatrix, xl="Weighting Methods", yl="Weight", lt="Criteria")
+```
+
+# MCDA Method for Different Weights
+In the following code snippet, we apply the TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) method using each of the previously calculated weight sets.
+his demonstrates how different weighting strategies can lead to varying rankings of alternatives.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+critrank <- topsis(dmatrix=dmat, bcvec=bc, weights=critwei)$rank
+entrank <- topsis(dmatrix=dmat, bcvec=bc, weights=entwei)$rank
+equrank <- topsis(dmatrix=dmat, bcvec=bc, weights=equwei)$rank
+ginirank <- topsis(dmatrix=dmat, bcvec=bc, weights=giniwei)$rank
+sdevrank <- topsis(dmatrix=dmat, bcvec=bc, weights=sdevwei)$rank
+geomrank <- topsis(dmatrix=dmat, bcvec=bc, weights=geomwei)$rank
+merecrank <- topsis(dmatrix=dmat, bcvec=bc, weights=merecwei)$rank
+mpsirank <- topsis(dmatrix=dmat, bcvec=bc, weights=mpsiwei)$rank
+rocrank <- topsis(dmatrix=dmat, bcvec=bc, weights=rocwei)$rank
+rsrank <- topsis(dmatrix=dmat, bcvec=bc, weights=rswei)$rank
+
+topsisranks <- cbind(Equal=equrank, Critic=critrank, StdDev=sdevrank, Gini=ginirank, Geometric=geomrank, 
+    Merec=merecrank, Mpsi=mpsirank, Entropy=entrank, Roc=rocrank, Rs=rsrank)
+```
+
+The `topsisranks` matrix, shown above, displays the resulting rankings of alternatives when TOPSIS is applied with each of the ten weighting methods. 
+By comparing the ranks across columns, one can observe the impact of different weighting schemes on the final decision outcomes.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+rownames(topsisranks) <- rownames(dmat)
+print(t(topsisranks))
+```
+
+The rank heatmap provides a visual representation of the rankings. The smallest rank number (1) indicates highest (best) rank, while higher rank numbers indicate lower (worse) ranks. 
+The heatmap allows for quick identification of alternatives that consistently rank high or low across different weighting methods, as well as those whose ranks vary considerably. 
+The row dendrogram groups similar ranking profiles.
+
+
+```{r fig.width=10, fig.height=6}
+rankheatmap(t(topsisranks), colpal=1, cellnotes=TRUE, tcol="black", dendro="row")
+```
+The Principal Component Analysis (PCA) biplot of the ranks helps visualize the relationships between the different weighting methods (as variables) and the alternatives (as observations). 
+Methods that cluster together in the plot tend to produce similar rankings. Alternatives positioned closer to specific methods are more highly ranked by those methods. This plot is useful 
+for identifying the overall consistency of the rankings and potential outliers.
+
+```{r fig.width=10, fig.height=6}
+pca <- rankpca(t(topsisranks), biplot=TRUE)
+```
+
+## Sensitivity Analysis for Alternatives
+This section presents the results of a sensitivity analysis, specifically focusing on the stability of individual alternative ranks across the different weighting methods.
+The `ressens1` output provides a stability table for each alternative. This table typically includes metrics like the minimum, maximum, mean, and standard deviation of an alternative's 
+rank across all applied weighting methods. A lower standard deviation suggests greater stability for that alternative's rank, indicating it is less sensitive to the choice of weighting method.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+ressens1 <- sensana(t(topsisranks))
+print(ressens1)
+```
+
+## Rank Comparison by the Weighting Methods
+
+Here, we compare the rank similarities and differences between the various weighting methods using several statistical tests and similarity measures. This helps quantify how consistent
+or divergent the ranking outcomes are across different approaches. The `rescomp` object contains several matrices that quantify the similarity between the rankings produced by each weighting method:
+
+ 
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+rescomp <- rankcompare(t(topsisranks), biplot=FALSE, nperms = 100, nboot=100, 
+   entropyopt = "jsd", alpha = 0.05, padjmethod = "bonferroni")
+
+```
+
+The __Spearman Rank Correlations matrix (src)__ shows the correlation between the ranks generated by each pair of weighting methods. Higher correlation values indicate greater similarity in rankings.
+In the displayed matrix, the lower triangle shows the Spearman correlation coefficients, while the upper triangle displays the significance test results.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+print(rescomp$src) # Spearman rank correlations matrix
+```
+
+The __Weight Similarity matrix (wsrs)__  is another measure of rank similarity, often giving more weight to highly similar ranks.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+print(rescomp$wsrs) # WS similarity matrix
+```
+
+The __Wilcoxon Rank Sum Test (wilcox)__ matrix provides p-values from pairwise Wilcoxon tests, indicating whether there's a statistically significant difference between the ranks generated by two methods.
+In the displayed matrix, the lower triangle shows the test statistic (W), while the upper triangle displays the adjusted p-values for the statistical inference.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+print(rescomp$wilcox) # Wilcox test matrix
+```
+
+The __Rank entropy differences matrix with permutations (entper)__ and __Rank Jensen-Shannon entropy divergence (JSD) matrix with bootstrap (entboot)__  are the matrices assess the uncertainty or dispersion of ranks, providing insights into the overall stability of the ranking system under permutation and bootstrap resampling.
+
+In the displayed matrix, the lower triangle shows the Shannon entroyp differences, while the upper triangle presents the adjusted p-values for the statistical inference.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+print(rescomp$entper) # Rank entropy matrix with permutations
+```
+
+In the displayed matrix, the lower triangle shows the Jensen-Shannon Divergence (JSD) values, while the upper triangle presents the adjusted p-values for the statistical inference.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+print(rescomp$entboot) # Rank entropy matrix with bootstrap
+```
+    
+# Sensitivity Analysis with Gradually Modified Weighting 
+
+This section delves into a more detailed sensitivity analysis by gradually modifying a specific set of weights and observing the impact on alternative rankings. This allows for a deeper understanding of how subtle changes in criterion importance can affect the final decision.
+The `weisana` function performs a gradual sensitivity analysis. Here, we are incrementally perturbing the critwei (Critic method weights) by a rp (relative perturbation) factor ranging from 0.01 to 0.5.
+In the output below:
+* `gradweimat` shows the modified weight sets generated during this gradual perturbation.
+* `rankmat` presents the corresponding alternative rankings for each of these modified weight sets.
+* `topsisgrawei$sensitivity_table` summarizes the sensitivity of each alternative's rank to these gradual changes in weights, often showing how many times an alternative's rank changed its position, or its average rank change.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+mp <- list()
+wp <- list(rp = seq(0.01, 0.5, 0.05))
+topsisgrawei <- weisana(dmatrix = dmat, bcvec = bc, weights=critwei,
+     weimethod = "gradual", weipars = wp,
+     mcdamethod = topsis, methodpars = mp)
+str(topsisgrawei)
+
+gradweimat <- topsisgrawei$weights_matrix # Modified weights matrix
+rankmat <- topsisgrawei$ranking_matrix    # Ranking matrix
+senstable <- topsisgrawei$sensitivity_table # Different rankings summary table
+head(round(gradweimat, 3)) 
+head(rankmat)  # Rank matrix
+
+print(senstable)
+
+```
+
+The table, labeled `senstable`, provides a detailed breakdown of the different ranking patterns observed during the sensitivity analysis where criterion weights were gradually modified.
+
+Each row represents a unique ranking "Pattern" that emerged, showing the order of alternatives (e.g., 3,12,8,4,9,6,7,10,2,5,11,1 means Alternative 3 ranked first, Alternative 12 second, and so on).
+
+* Dominant Ranking Pattern: "Ranking_1" is overwhelmingly the most frequent outcome. This specific ranking pattern, 3,12,8,4,9,6,7,10,2,5,11,1, occurred 71 times, accounting for 70.30% of all observed rankings during the gradual weight perturbations. This indicates a high degree of stability for this particular ranking sequence, suggesting it is robust to a wide range of minor changes in criterion weights.
+
+* Diversity of Rankings: Despite the dominance of "Ranking_1", a significant number of other unique ranking patterns were also observed (16 other distinct patterns in total). This implies that while one ranking is highly stable, the system is not entirely insensitive, and variations in weights can indeed lead to different orderings.
+
+* Low Frequency of Other Patterns: All other ranking patterns (from "Ranking_2" to "Ranking_17") occurred with very low frequencies. Most of them appeared only once, representing a mere 0.99% of the total observations. Some appeared slightly more often, such as "Ranking_4" and "Ranking_5" (both 4 times, 3.96%), and "Ranking_7" (5 times, 4.95%). This demonstrates that while alternative rankings exist, they are relatively rare and less stable compared to the primary ranking.
+
+In summary, the sensitivity analysis reveals that the ranking of alternatives is quite stable, with one specific order consistently emerging as the preferred outcome across various weight modifications. However, the presence of numerous other low-frequency ranking patterns underscores that the decision is not entirely immune to changes in criterion importance, and minor perturbations can, in some cases, lead to different alternative orderings. This information is crucial for decision-makers to assess the robustness of their final choice.
+
+```{r fig.width=10, fig.height=6}
+pca <- rankpca(rankmat, biplot=TRUE)
+```
+This PCA biplot, derived from the rankmat (rankings under gradual weight modification), offers a visual summary of how the rankings evolve as the weights are gradually changed. It can highlight thresholds where small weight changes lead to significant shifts in rankings, or identify periods of high stability.
+The PCA biplot visualizes the relationships between the different states of gradually modified weights (represented by the blue labels like C1-46%, C1-41%, etc., where 'C' likely refers to a 
+criterion and the percentage to its perturbation level) and the alternatives (represented by red text. The two dimensions, Dim1 and Dim2, capture 72.9% and 19.3% of the total variance, respectively,
+meaning they collectively explain a high proportion of the variability in the ranking data.
+
+There's a noticeable spread along Dim1, especially towards the right (e.g., C5-26% to C5-46%) and to the far left (C8-31% to C8-46%). This indicates that certain weight modifications, particularly those involving C5 and C8, lead to significantly different ranking outcomes compared to the central cluster.
+
+Criterion 5 (C5): The labels like "C5-26%", "C5-31%", "C5-36%", "C5-41%", "C5-46%" are grouped on the far right side of Dim1. This suggests that as the weight of Criterion 5 is perturbed (especially at higher percentages like 26% to 46%), it drives the rankings to a distinct outcome, differing significantly from the rankings observed with other criterion perturbations. The vector for C5 (implied by the cluster of C5 points) would point towards the right.
+
+Criterion 8 (C8): Similarly, the labels "C8-26%", "C8-31%", "C8-36%", "C8-41%", "C8-46%" are clustered on the far left side of Dim1, and some also spread vertically along Dim2. This indicates that perturbations of Criterion 8's weight lead to another set of distinct rankings, significantly different from the C5-driven rankings and the central cluster.
+
+The PCA biplot effectively visualizes the stability and sensitivity zones for the alternative rankings. It shows that while many gradual weight modifications result in similar rankings (the central cluster), certain criteria (notably C5 and C8, as indicated by their spread on the plot) have a strong influence. 
+## Sensitivity of Alternatives
+
+Building on the gradual sensitivity analysis, this section provides a specific stability assessment of alternatives under these progressively modified weights
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+ressens2 <- sensana(rankmat)
+print(ressens2$stabtable)
+```
+The `ressens2$stabtable` output provides the stability of each alternative's rank under the influence of the gradually modified weights. This table is crucial for identifying which alternatives are robust to minor perturbations in criterion importance and which ones are highly sensitive, potentially leading to different decisions based on slight variations in expert judgment or data.
+
+## Decision Making with Rank Aggregation
+
+Finally, we explore how to synthesize the diverse rankings obtained from different weighting methods into a single, more robust preference order. This is achieved through rank aggregation techniques.
+
+The rankaggregate function combines the individual rankings from topsisranks into a single, aggregated ranking. This aggregation step is vital for deriving a more consensual and robust decision, especially when multiple legitimate weighting approaches yield different results.
+
+* `prefrank` displays the final aggregated ranking of the alternatives. This is often considered a more stable and reliable ranking as it mitigates the influence of any single weighting method.
+* `preftable` provides a more detailed breakdown, showing how each alternative performed across the different aggregated rankings, potentially including information on how many times an alternative ranked in the top k positions.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+respref <- rankaggregate(t(topsisranks), topk=1, tiesmethod="average")
+preftable <- respref$preference_table
+prefrank <- respref$preference_ranking
+print(prefrank)
+print(preftable)
+```
+
+

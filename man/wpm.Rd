@@ -1,0 +1,70 @@
+\name{wpm}
+\alias{wpm}
+\encoding{UTF-8}
+\title{WPM: Weighted Product Method}
+\description{
+Implements the Weighted Product Method (WPM) to evaluate and rank alternatives using multiplicative aggregation of weighted and normalized criteria.
+}
+\usage{
+wpm(dmatrix, bcvec, weights, normethod = "vector", tiesmethod = "average")
+}
+\arguments{
+  \item{dmatrix}{
+    Decision matrix where rows represent alternatives and columns represent criteria.
+  }
+  \item{bcvec}{
+    Benefit-cost vector, specifying for each criterion whether it is a benefit (\code{1}) or a cost (\code{-1}).
+  }
+  \item{weights}{A numeric vector of user-defined weights representing the relative importance of each criterion, or a character string to calculate it internally. Defaults to \code{"equal"} to apply equal weighting for criteria. See \code{\link{calcweights}} for details.}
+  \item{normethod}{The normalization method to be applied. Defaults to \code{"vector"}. See \code{\link{calcnormal}} for details. }
+  \item{tiesmethod}{The ties method to be applied in rank calculation. The default value is 'average'. Other options are 'min', 'max', and 'none'.} 
+}
+\details{
+The WPM evaluates alternatives by normalizing the decision matrix, raising each criterion to the power of its respective weight, and aggregating the values multiplicatively. This method calculates the relative performance (\code{p}) of each alternative for ranking purposes.
+}
+\value{
+A list containing the following components:
+  \item{nmatrix}{The normalized decision matrix.}
+  \item{weighted_matrix}{The decision matrix after applying weights using the power operator.}
+  \item{p}{The final scores for each alternative, calculated as the product of weighted and normalized criteria.}
+  \item{rank}{The ranks of final scores for alternatives.}
+}
+\references{
+Miller, D. W., & Starr, M. K. (1960). Executive decisions and operations research (Vol. 40). Englewood Cliffs, NJ: Prentice-Hall.
+
+Zavadskas, E. K., Vilutiene, T., Turskis, Z., & Šaparauskas, J. (2014). Multi-criteria analysis of Projects' performance in construction. 
+ \emph{Archives of Civil and Mechanical Engineering, 14}, 114-121. <doi:10.1016/j.acme.2013.07.006>
+}
+\seealso{
+  \code{\link{calcweights}}, \code{\link{calcnormal}}
+}
+\author{
+  Cagatay Cebeci
+}
+\examples{
+# Sample decision matrix
+dmat <- matrix(c(
+  84, 10, 5, 20,  
+  66, 18, 8, 15,
+  74, 12, 6, 25,
+  90, 22, 9, 18, 
+  68, 18, 7, 15  
+), nrow = 5, byrow = TRUE)
+rownames(dmat) <- c("A1", "A2", "A3", "A4", "A5")
+colnames(dmat) <- c("C1", "C2", "C3", "C4")
+
+# Benefit-cost vector (1: benefit, -1: cost)
+bc <- c(1, -1, 1, -1)
+
+# User-defined weights
+uw <- c(0.1, 0.4, 0.3, 0.2)
+
+# Apply WPM with user-defined weights
+reswpm_1 <- wpm(dmatrix=dmat, bcvec=bc, weights=uw)
+print(reswpm_1)
+
+# Apply WPM with MEREC weights
+merecw <- calcweights(dmat, bcvec=bc, type="merec")
+reswpm_2 <- wpm(dmatrix=dmat, bcvec=bc, weights=merecw, normethod="vector")
+print(reswpm_2)
+}
