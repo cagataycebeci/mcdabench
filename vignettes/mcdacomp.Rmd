@@ -1,0 +1,381 @@
+---
+title: "Comparison of Multi-Criteria Decision Making Methods with mcdabench"
+author: "Cagatay Cebeci"
+date: "19 May 2025"
+encoding: UTF-8
+output: 
+  html_document:
+    theme: journal
+    highlight: kate
+    number_sections: true
+    toc: true             
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Comparison of Multi-Criteria Decision Making Methods with mcdabench}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteTangle{TRUE}
+---
+<style>
+body{
+  max-width: 90%; 
+  margin: 0 auto; 
+}
+  text-align: justify
+}
+p{font-size: 1.2em;}
+</style>
+
+```{r setup, include=FALSE}
+options("width" = 260)
+knitr::opts_chunk$set(fig.width=11, fig.height=9)
+```
+
+# Introduction
+This vignette is a comprehensive tutorial on how to use the `mcdabench` package in R for conducting Multi-Criteria Decision Analysis Analysis (MCDA). It presents the application of various MCDA methods to two simulated datasets, allowing users to understand and mcdabench different approaches for decision support.
+
+# Required Packages
+The recent version of the package `mcdabench` from CRAN is installed with the following command:
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+install.packages("mcdabench", dep=TRUE)
+```
+
+If you have already installed `mcdabench`, you can load it into R working environment by using the following command:
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+library(mcdabench)
+```
+
+# Data Set
+As an example, the `egrids` dataset in the package contains simulated data representing different energy management strategies or system configurations for optimizing smart grids. The dataset includes 12 alternatives and 10 criteria, which evaluate smart grids in terms of efficiency, reliability, environmental compatibility, and cost-effectiveness.
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+ # Load the data set
+ data(egrids)
+
+ # Extract the decision matrix, benefit-cost vector and weights
+ dmat <- egrids$dmat
+ bc <- egrids$bcvec
+ userwei <- egrids$weights
+ print(egrids)
+```
+
+# Normalization of Decision Matrix
+MCDA problems employ normalization to rescale different criteria and make them comparable. This process addresses the issue of varying units and scales across criteria by transforming them into a common scale. By doing so, normalization prevents biased evaluations and promotes consistency and fairness in decision-making, which allows for accurate comparisons between the available alternatives.
+
+The `calcnormal` function in the `mcdabench` package offers various common normalization techniques. While "maxmin" (called as MaxMin or MinMax) normalization is typically applied, users can also choose from options such as "enhanced", "linear", "logarithmic", "ratio", "maxmin", "nonlinear", "vector", "sum", "zavadskas", and "zscore" depending on their needs.
+
+The following code snippet demonstrates the normalization of a decision matrix using four techniques available in the `calcnormal` function. 
+For example, `nmatrix1` is obtained using the `"maxmin"` type normalization, which scales values to a range between 0 and 1. Meanwhile, `nmatrix2`
+is calcnormald using the `"sum"` technique, where each criterion value is divided by the sum of all values for that criterion. 
+Below, the calcnormald matrix `nmatrix` is displayed below giving an idea.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+nmatrix1 <- calcnormal(dmat, bcvec=bc, type="maxmin")
+nmatrix2 <- calcnormal(dmat, bcvec=bc, type="sum")
+nmatrix3 <- calcnormal(dmat, bcvec=bc, type="vector")
+nmatrix4 <- calcnormal(dmat, bcvec=bc, type="zavadskas")
+
+round(nmatrix1, 3) # MaxMin normalized matrix
+```
+```{r fig.width=10, fig.height=6}
+corplot(nmatrix1, xlab="Alternative", ylab="Criterion", title="MaxMin Normalized Matrix")
+```
+
+To effectively visualize and compare the distribution of calcnormald values in MCDA studies, the `mcdabench` package offers the `boxplotmcda` function. 
+This function is specifically designed to display the variability in the columns of MCDA matrices. The code below leverages `boxplotmcda` to generate 
+ boxplots for `nmatrix1`, `nmatrix2`, `nmatrix3`, and `nmatrix4` for comparison purpose.
+
+```{r fig.width=10, fig.height=6}
+opar <- par(mfrow=c(2,2))
+boxplotmcda(nmatrix1, mt = "MaxMin")
+boxplotmcda(nmatrix2, mt = "Sum")
+boxplotmcda(nmatrix3, mt = "Vector")
+boxplotmcda(nmatrix4, mt = "Zavadskas-Turskis")
+par(opar)
+
+```
+Above, the figure displays the distribution of calcnormald values for a decision matrix across 10 criteria (`C1` to `C10`), resulting from the application
+of four different normalization options such as "maxmin", "sum", "vector", and "zavadskas". Each boxplot visualizes how the values for each criterion are
+scaled by the respective normalization method.
+
+The common "maxmin" normalization scales the values of each criterion to a common range, typically between 0 and 1. We can observe the central tendency
+(median) and the spread (variability) of the calcnormald values for each criterion after this linear scaling. The "sum" technique calcnormals the values of 
+each criterion by dividing them by the sum of all values for that criterion. As a result, for each criterion, the calcnormald values will sum up to 1. 
+The "Vector" normalization (also known as Euclidean norm normalization) scales the values of each criterion by dividing them by the Euclidean norm 
+(or length) of the vector of values for that criterion. We can see that the scales and spreads of the calcnormald values can differ significantly from 
+other methods. The "Zavadskas" normalization is another technique to bring the criteria values to a comparable scale. The resulting scale and distribution
+characteristics will depend on the specifics of the Zavadskas formula, which aims to provide a balanced and consistent scaling.
+
+According to the plots in the figure, "vector" and "zavadskas" normalization tend to preserve and amplify the inherent variability across the criteria 
+more than "maxnin" and "sum". This results in criteria with initially wider ranges exhibiting broader distributions post-normalization. Consequently, 
+if the analysis aims to emphasize the natural variability of criteria, "vector" and "zavadskas" might be preferred, while "maxmin" and "sum" offer 
+a more balanced comparison. The choice of normalization should thus align with the data characteristics and the analysis objectives.
+
+
+# Calculation of Weights
+In Multi-Criteria Decision Analysis (MCDA), criteria values are assigned importance coefficients, commonly known as __weights__ which influence the 
+final decision. These weights are typically determined by experts based on their knowledge and judgment. However, this subjective approach can be 
+challenging due to biases and inconsistencies.
+
+To address this, various objective weight calculation techniques have been developed, providing a systematic and data-driven alternative. 
+Some widely used methods include Equal Weights, GINI, CRITIC, MEREC, Geometric Mean, Entropy, Standard Deviation, Rank Order Centroid (ROC), 
+and Rank-Sum (RS). These techniques help ensure more balanced and transparent weight assignments, enhancing the reliability and fairness of 
+decision-making processes.
+
+In the following code snippet, weights are calculated using various methods based on the decision matrix (`nmatrix3`) that has been previously calcnormald
+using the "vector" normalization technique.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+critwei <- calcweights(nmatrix3, bcvec=bc, type="critic")
+entwei <- calcweights(nmatrix3, bcvec=bc, type="entropy")
+equwei <- calcweights(nmatrix3, bcvec=bc, type="equal")
+giniwei <- calcweights(nmatrix3, bcvec=bc, type="gini")
+sdevwei <- calcweights(nmatrix3, bcvec=bc, type="sdev")
+merecwei <- calcweights(nmatrix3, bcvec=bc, type="merec")
+mpsiwei <- calcweights(nmatrix3, bcvec=bc, type="mpsi")
+geomwei <- calcweights(nmatrix3, bcvec=bc, type="geom")
+rocwei <- calcweights(nmatrix3, bcvec=bc, type="roc")
+rswei <- calcweights(nmatrix3, bcvec=bc, type="rs")
+wmatrix <- cbind(Equal=equwei, Merec=merecwei, Geometric=geomwei, Mpsi=mpsiwei,
+           Gini=giniwei, Critic=critwei, Entropy=entwei, StdDev=sdevwei, Rs=rswei, Roc=rocwei)
+print(round(wmatrix,3))
+```
+
+Below the profile plot and table illustrate the weights assigned to ten criteria (`C1`-`C10`) by various objective weighting methods following "Vector" 
+normalization. The "Equal" method provides a uniform baseline. Methods like "Merec" and "Geometric mean" yield relatively consistent weights across 
+criteria. The GINI coefficient appears to follow a more moderate approach, exhibiting some differentiation in weights but generally less extreme than 
+"Critic", "Entropy", "StdDev", and "Roc".
+
+```{r fig.width=10, fig.height=6}
+parcorplot(wmatrix, xl="Weighting Methods", yl="Weight", lt="Criteria")
+corplot(wmatrix, xlab="Weighting Methods", ylab="Weight", title="Weights", 
+   colpal=c("gray","dodgerblue", "orange"))
+```
+Methods such as "Critic" and "StdDev" emphasize criteria with higher variability, while "Entropy" downweights less diverse criteria. "Roc" shows a highly 
+skewed distribution. GINI, by measuring inequality in the distribution of criterion values, can highlight criteria where alternatives show greater 
+disparity. This makes it a potential middle-ground option when some differentiation is desired but extreme weighting based solely on variance or 
+information content might not be appropriate. The choice of method, including GINI, should depend on the specific MCDA problem and the desired balance 
+in reflecting criteria differences.
+
+# Comparison of the MCDA Methods
+
+### Setting Method-specific Parameters
+Some MCDA methods utilize specific parameters unique to their algorithms. For example, VIKOR's parameter `v` represents the weight of the strategy for 
+maximum group utility, a value between 0 and 1. The values of these parameters are passed to the `mcdabench` function as a list of parameters within the 
+function's `params` argument. If a parameter list is not provided, default values are used. To understand the specific parameters for each MCDA method, 
+one should consult their respective function help documentation.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+    paramlist <- list(
+      aras      = list(),
+      aroman    = list(lambda = 0.5, beta = 0.5),
+      codas     = list(thr = 0.1),
+      cocoso    = list(lambda = 0.5),
+      electre4  = list(p = 0.6, q = 0.4, v = 0.1),
+      fuca      = list(),
+      gra       = list(idesol = NULL, grdmethod = "sum", rho = 0.5),
+      mabac     = list(),
+      macont6   = list(p = 0.5, q = 0.5, delta = 0.5, theta = 0.5),
+      marcos    = list(),
+      mairca    = list(),
+      maut      = list(utilfuncs = NULL, normutil = TRUE, ss = 1),
+      mavt      = list(valfuncs = NULL, normvals = TRUE, ss = 1),
+      megan     = list(normethod = "maxmin", thr = 0, tht = "sdev"),
+      megan2    = list(normethod = "ratio", thr = NULL, tht = "p25"),
+      moora     = list(),
+      ocra      = list(),
+      oreste    = list(domplot = FALSE),
+      promethee1 = list(),
+      promethee2 = list(),
+      promethee3 = list(strict = FALSE),
+      promethee4 = list(alpha = 0.2),
+      promethee5 = list(g = 0, l = 100),
+      promethee6 = list(varmethod = "abs_sum"),
+      ram       = list(normethod = "sum"),
+      rov       = list(normethod = "maxmin"),
+      smart     = list(),
+      topsis    = list(normethod = "maxmin"),
+      vikor     = list(normethod = "maxmin", v = 0.5),
+      waspas    = list(normethod = "linear", v = 0.5),
+      wpm       = list(normethod = "vector")
+    )
+```
+
+## Apply MCDA Methods with Equal Weights
+To establish a preference ranking and make a decision using any suitable MCDA method. The MCDA field offers a multitude of such methods.
+In such cases, one can utilize methods that have demonstrated successful outcomes in the literature. However, employing the `mcdabench` 
+function to benchmark across various methods can contribute to a more robust decision-making process. 
+
+This function currently allows for working with methods such as "aras", "aroman", "cocoso", "codas", "edas", "elect4", "fuca", "gra", 
+"mabac", "macont", "mairca", "marcos", "maut", "mavt", "megan", "megan2", "moora", "promethee1", "promethee2", "promethee3", 
+"promethee4", "promethee5", "promethee6", "ram", "rov", "smart", "topsis", "vikor", "waspas", "wpm", and "wsm".
+
+Below, the code chunk runs a comparison of multiple MCDA methods using `dmat`, the original decision matrix, considering `bcvec`, benefit-cost vector 
+and equal weights of criteria. The `mcdabench` function from `mcdabench` takes a list of method names in `methodlist` and applies each of them to the data. 
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+methodlist <- c("aras", "edas", "elect4", "fuca", "gra", "mabac", "codas", "marcos", "megan", 
+                "moora", "promt2", "smart",  "topsis", "vikor", "waspas")
+
+equwei <- calcweights(dmat, bcvec = bc, type = "equal")
+
+resmcda <- methodbench(dmatrix = dmat, bcvec = bc, weights = equwei, 
+     mcdm = methodlist, params = paramlist)
+```
+
+### Results
+The following code chunk first displays the structure of the `resmcda` object using the `str` function, which provides a summary of the results components built with methodbench function above. Then, it extracts `rankmat`, the rank matrix  in `resmcda` object. 
+This matrix contains the ranking of the alternatives according to each of the MCDA methods used in the comparison. Finally, the `rankmat` is displayed 
+to decide the preferences.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+str(resmcda)  # Structure of benchmarking object
+
+rankmat <- resmcda$rankmat  # Ranking matrix
+print(rankmat)
+```
+#### Ranking Visualization
+The following code chunk visualizes `rankmat`, the rank matrix using the function `rankheatmap` that creates a heatmap of the ranks by benchmarked
+MCDA methods, allowing for a visual comparison of how different these methods rank the alternatives. The arguments `colpal=1` specifies a color palette, 
+`cellnotes=TRUE` displays the rank values within the heatmap cells, and `tcol="black"` sets the color of the cell notes. The function `parcorplot` of
+`methodbench` package generates a parallel coordinate plot of the ranks, providing another way to methodbench the ranking patterns across the different MCDA methods.
+
+```{r fig.width=10, fig.height=6}
+rankheatmap(rankmat, colpal=1, cellnotes=TRUE, tcol="black")
+```
+A parallel coordinate plot is useful for observing whether the rankings of alternatives change in parallel across different MCDA algorithms. This makes 
+it easy to see which method alters the ranking of the alternatives.
+
+```{r fig.width=10, fig.height=6}
+corplot(rankmat, xlab="MCDM Methods", ylab="Alternatives", title="MCDA Methods", colpal=c("gray","green","dodgerblue"))
+```
+```{r fig.width=10, fig.height=6}
+parcorplot(rankmat, xl="Alternatives", yl="Ranks", lt="MCDA Methods")
+```
+
+### Ranking Comparison
+In the following code snippet, `rankcompare` uses the previously created `rankmat` to compare the ranking results returned by MCDA methods. 
+In this function call, `nperms` represents the number of permutations, `nboot` denotes the number of bootstrap resampling iterations, `entropyopt` 
+specifies the entropy calculation method to be applied, `alpha` indicates the significance probability for statistical tests, and `padjmethod` defines 
+the p-value adjustment method to be used in statistical tests. If no adjustment is desired, `'none'` should be entered.
+
+Through the comparisons, correlations and similarities between the ranks found by the methods are analyzed, along with statistical tests on rank 
+differences and rank entropy variations.
+
+In this process, the `rescomp` object returns the following results:
+
+* Spearman rank correlations matrix (`src`)
+* Weight similarities matrix (`wsrs`)
+* Pairwise Wilcoxon rank sum test matrix (`wilcox`)
+* Pairwise rank entropy similarity with permutations (`entper`)
+* Pairwise rank entropy similarity with bootstrap (`entboot`)
+
+The results of these comparisons are shown below:
+
+* In the Spearman rank correlations matrix, the lower triangle displays the rank correlations found by the compared MCDA methods, while the upper triangle shows the significance values of these correlations.
+* The Weight similarities matrix contains the similarity coefficients of the ranks obtained by the compared MCDA methods.
+* In the Wilcoxon rank sum test matrix, the lower triangle shows the W values from the WSRT test applied to the compared MCDA methods, while the upper triangle displays the corresponding p-values of these test results.
+* In the matrix of pairwise rank entropy similarity with permutations, the lower triangle presents the rank entropy differences between the compared MCDA methods, while the upper triangle shows the p-values of the permutation test results.
+* In the matrix of pairwise rank entropy similarity with bootstrap, the lower triangle displays the rank entropy differences of the compared MCDA methods, while the upper triangle provides the p-values of the bootstrap test results.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+rescomp <- rankcompare(rankmat, nperms = 100, nboot=100, entropyopt = "jsd", 
+   alpha = 0.05, padjmethod = "fdr", biplot=FALSE)
+print(rescomp$src) # Spearman rank correlations matrix
+print(rescomp$wsrs) # WS similarity matrix
+print(rescomp$rangesim) # Rank range similarity matrix
+print(rescomp$wilcox) # Wilcoxon rank sum test matrix
+print(rescomp$entper) # Rank entropy matrix with permutations
+print(rescomp$entboot) # Rank entropy matrix with bootstrap
+```
+```{r fig.width=10, fig.height=6}
+rankheatmap(rescomp$rangesim, colpal=1, cellnotes=TRUE, tcol="black")
+```
+```{r fig.width=10, fig.height=6}
+sccmatrix <- rankspearman(rankmat)$cormat
+corplot(sccmatrix, xlab="MCDM Methods", ylab="MCDM Methods", title="Spearman Correlation Matrix")
+```
+
+### Sensitivity Analysis
+Sensitivity analysis in MCDA evaluates how changes in input parameters impact the ranking or decision outcome. It helps assess the robustness and 
+reliability of the decision model by examining the effect of variations in criteria weights or preference settings. Sensitivity analysis is typically 
+performed to:
+
+* Identify the stability of rankings
+* Identify the sensitivty of weights
+* Detect influential criteria affecting decision outcomes
+
+In the following code snippet, the `sensana` function performs a sensitivity analysis on `rankmat`. The obtained results are stored in ressens and displayed.
+Sensitivity analysis below assesses the stability of ranking outcomes across different methods, helping to determine which approaches produce consistent 
+results and which lead to significant variations. 
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+ressens <- sensana(rankmat)
+print(ressens$stabtable) # Stability
+print(ressens$sensscores) # Sensitivity score
+```
+Based on the stability analysis with stabtable measures indicate how much the rankings of alternatives fluctuate across different MCDA methods:
+
+* Standard Deviation (`SD`): A higher SD suggests that the ranking assigned by a particular method is more volatile across different alternatives.  
+`G2` (4.57) and `G3` (4.05) show significant variation, meaning that the rankings assigned by these methods shift noticeably. `G8v (0.63) and `G4` (0.93) 
+ are much more stable, implying that their rankings remain relatively unchanged regardless of sensitivity variations.
+
+* Relative Volatility (`RVOL`)  measures proportional ranking fluctuation. `G5` and `G11` (0.85) indicate methods with higher sensitivity to input changes. 
+`G4` and `G8` (0.62) show lower volatility, meaning they produce more stable ranking outcomes.
+
+* Ranking Stability Index (`RSI`): Higher RSI values indicate robust ranking behavior; lower values suggest greater instability in ranking decisions.
+ `G4`, `G8`, and `G9` exhibit strong stability (above 0.75). `G2` (0.71) and G3 (0.64) are slightly more sensitive, meaning rankings from these methods can shift 
+ depending on input variations.
+
+Based on the Sensitivity Scores (sensscores) represents the degree to which rankings change when input variations occur: `G3` (4.71) and `G2` (3.61) are 
+the most sensitive methods, indicating that rankings from these approaches are highly affected by parameter changes. `G4` (0.50) and `G8` (0.61) produce 
+more stable rankings, meaning they are less influenced by weight and preference shifts.
+
+We can use the Spearman Correlation Matrix (spearmancor), provides insights into how similar or different the rankings produced by various MCDA methods are: 
+
+* High positive correlations ($\geq 0.90$) between methods like ARAS, EDAS, MARCOS, and WASPAS indicate strong agreement in their rankings. These methods likely 
+follow similar ranking principles or weighting strategies.
+
+* MOORA (-0.22) and FUCA (0.10) show weaker correlations, suggesting they provide alternative ranking perspectives compared to conventional MCDA methods.
+
+* GRA (0.06) and SMART (0.08) demonstrate low correlation with many methods, implying that they apply distinct evaluation techniques resulting in different rankings.
+
+### Aggregation and Flow of Dominance
+This analysis summarizes how different MCDA methods prioritize alternatives by applying various ranking aggregation techniques. It helps determine consistency in 
+rankings across different methods and identifies which alternatives are preferred most frequently. The `rankaggregate` function is used to combine multiple rankings, 
+in this case, from the `rankmat` (which contains rankings from the weight sensitivity analysis). The `topk` parameter is set to specifically consider the top 3 alternatives 
+from each individual ranking when performing aggregation methods.
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
+respref <- rankaggregate(rankmat, topk=3)
+print(respref$preference_ranking)
+print(respref$preference_table)
+```
+The `preference_ranking` table provides the aggregated ranks for each alternative using various rank aggregation methods.
+
+* TOPK3: This method aggregates based on how often an alternative appears in the top-k positions (here, k=3). It shows G10 as rank 1, G9 as rank 2, and G6 as rank 3. Interestingly, 
+   `G1`, `G4`, `G8`, and `G11` share a rank of `10.5`, while `G2`, `G3`, and `G7` share rank `6.0`.
+* RANKSUM, MEDIAN, BORDACNT, COPELAND, KEMYNG, MARKOV: These methods offer different approaches to combine the individual rankings. While G10 and G9 frequently appear at the top, 
+their exact ranks and the subsequent ordering of other alternatives can vary slightly between methods. For instance:
+    * `G10` consistently holds rank 1 for TOPK3, MEDIAN, COPELAND, KEMYNG, and MARKOV, but rank 2 for RANKSUM and BORDACNT.
+    * `G9` is often rank 2 (TOPK3, MEDIAN, COPELAND, KEMYNG, MARKOV) or rank 1 (RANKSUM, BORDACNT).
+    * `G11` consistently appears as the lowest-ranked alternative (rank 12) across most methods, except for MARKOV (rank 11).
+
+This variability among aggregation methods highlights that while the underlying MEGAN rankings might be robust (as seen in the weight sensitivity analysis), the final consensus can 
+depend on the specific aggregation method applied.
+
+The `preference_table` explicitly describes the outranking relationships derived by each aggregation method.
+
+`G10` and `G9` are consistently identified as the leading alternatives, appearing at the very top of most aggregated preference lists.
+Alternatives like `G5` and `G6` also generally perform well, often appearing in the top ranks after `G10` and `G9`.
+`G11` consistently appears at the very end of the aggregated rankings, indicating it is the least preferred alternative across most aggregation methods. 
+`G8`, `G2`, `G4`, and `G7` also frequently appear in the lower half of the rankings.
+ 
+ Many aggregation methods show ties or close groupings for alternatives that perform similarly. For example, in TOPK3, `G2`, `G3`, and `G7` are tied, as are
+ `G1`, `G4`, `G8`, and `G11`. This indicates that while a strict hierarchy might not always be present, groups of alternatives with comparable performance levels are identified.
+    
+```{r fig.width=8, fig.height=11}
+fod <- respref$preference_ranking
+flowplot(fod["BORDACNT",], colpal=terrain.colors(12), txtcol = "black", orientation = "vertical") 
+```

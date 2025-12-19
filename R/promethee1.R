@@ -1,0 +1,174 @@
+promethee1 <- function(dmatrix, bcvec, weights, normethod = NULL, 
+  prefuncs = NULL, thr = NULL, tiesmethod="average") {
+
+  # Input checks
+  if (!is.matrix(dmatrix) && !is.data.frame(dmatrix)) {
+    stop("Decision matrix (dmatrix) must be a matrix or a data frame.")
+  }
+  if (!is.numeric(weights) || length(weights) != ncol(dmatrix)) {
+    stop("Weights must be a numeric vector with the same length as the number of criteria.")
+  }
+  if (!all(bcvec %in% c(-1, 1)) || length(bcvec) != ncol(dmatrix)) {
+    stop("bcvec (benefit/cost vector) must contain -1 (cost) or 1 (benefit) values and have the same length as the number of criteria.")
+  }
+  if (abs(sum(weights) - 1) > 1e-6) {
+    stop("The sum of the weights must be approximately 1.")
+  }
+
+  n <- nrow(dmatrix)
+  m <- ncol(dmatrix)
+
+  if (is.null(normethod)) {
+    nmatrix <- dmatrix
+  } else {
+    nmatrix <- calcnormal(dmatrix, bcvec, type = normethod)
+  }
+
+  # Default preference functions (linear)
+  if (is.null(prefuncs)) {
+    prefuncs <- rep("linear", m)
+  } else if (is.character(prefuncs)) {
+    if (length(prefuncs) == 1) {
+      prefuncs <- rep(prefuncs, m)
+    } else if (length(prefuncs) != m) {
+      stop("The length of prefuncs must be 1 or equal to the number of criteria.")
+    }
+  } else {
+    stop("Invalid prefuncs! Must be a character vector or a single character value.")
+  }
+
+  # Handle thresholds
+  if (is.null(thr)) {
+    thr <- as.list(rep(list(p = max(abs(apply(nmatrix, 2, diff)))), m)) # Default thr per criterion
+    warning("No thresholds provided. Using default threshold based on the maximum absolute difference for each criterion.")
+  } else if (is.list(thr)) {
+    if (length(thr) == 1 && m > 1) {
+      thr <- rep(thr, m) # Replicate single threshold list for all criteria
+    } else if (length(thr) != m) {
+      stop("The length of thresholds list (thr) must be 1 or equal to the number of criteria.")
+    }
+  } else {
+    stop("Invalid thr! Must be a list.")
+  }
+
+  # Calculate preference indices
+  preference_indices <- array(0, dim = c(n, n, m)) # [alt i, alt j, criterion k]
+  for (k in 1:m) {
+    for (i in 1:n) {
+      for (j in 1:n) {
+        if (i != j) {
+          d <- nmatrix[i, k] - nmatrix[j, k]
+          # If the criterion requires to be minimized, reverse the sign of the difference
+          if (bcvec[k] == -1) {
+            d <- -d
+          }
+
+          # Preference functions
+          pref_type <- prefuncs[k]
+          thresh <- thr[[k]]
+
+          if (pref_type == "linear") {
+            if (is.list(thresh) && !is.null(thresh$p)) {
+              p <- thresh$p
+            } else if (is.numeric(thresh) && length(thresh) == 1) {
+              p <- thresh
+            } else {
+              stop(paste("Missing or invalid 'p' threshold for linear preference function for criterion", k))
+            }
+            preference_indices[i, j, k] <- ifelse(d <= 0, 0, ifelse(d > p, 1, d / p))
+          } else if (pref_type == "usual") {
+            preference_indices[i, j, k] <- ifelse(d <= 0, 0, 1)
+          } else if (pref_type == "quasi") {
+            if (is.list(thresh) && !is.null(thresh$s)) {
+              s <- thresh$s
+            } else {
+              stop(paste("Missing 's' threshold for quasi preference function for criterion", k))
+            }
+            preference_indices[i, j, k] <- ifelse(d <= s, 0, 1)
+          } else if (pref_type == "v-shape") {
+            if (is.list(thresh) && !is.null(thresh$p)) {
+              p <- thresh$p
+            } else if (is.numeric(thresh) && length(thresh) == 1) {
+              p <- thresh
+            } else {
+              stop(paste("Missing or invalid 'p' threshold for v-shape preference function for criterion", k))
+            }
+            preference_indices[i, j, k] <- ifelse(d <= 0, 0, d / p)
+          } else if (pref_type == "level") {
+            if (is.list(thresh) && !is.null(thresh$p) && !is.null(thresh$q)) {
+              p <- thresh$p
+              q <- thresh$q
+            } else if (is.numeric(thresh) && length(thresh) == 2) {
+              p <- thresh[1]
+              q <- thresh[2]
+            }
+            else {
+              stop(paste("Missing 'p' or 'q' threshold for level preference function for criterion", k))
+            }
+            preference_indices[i, j, k] <- ifelse(d <= q, 0, ifelse(d > p, 1, 0.5))
+          } else if (pref_type == "linear-indif") {
+            if (is.list(thresh) && !is.null(thresh$p) && !is.null(thresh$q)) {
+              p <- thresh$p
+              q <- thresh$q
+            } else if (is.numeric(thresh) && length(thresh) == 2) {
+              q <- thresh[1]
+              p <- thresh[2]
+            } else {
+              stop(paste("Missing 'p' or 'q' threshold for linear-indif preference function for criterion", k))
+            }
+            preference_indices[i, j, k] <- ifelse(d <= q, 0, ifelse(d > p, 1, (d - q) / (p - q)))
+          } else if (pref_type == "gaussian") {
+            if (is.list(thresh) && !is.null(thresh$sigma)) {
+              sigma <- thresh$sigma
+            } else if (is.numeric(thresh) && length(thresh) == 1) {
+              sigma <- thresh
+            } else {
+              stop(paste("Missing 'sigma' threshold for Gaussian preference function for criterion", k))
+            }
+            preference_indices[i, j, k] <- 1 - exp(-(d^2) / (2 * (sigma^2)))
+          } else {
+            stop(paste("Invalid preference function:", pref_type, "for criterion", k))
+          }
+        }
+      }
+    }
+  }
+
+  # Weighted preference indices
+  weighted_preference_indices <- apply(preference_indices, c(1, 2), function(x) sum(x * weights))
+
+  # Calculate positive and negative outranking flows
+  phi_plus <- rowSums(weighted_preference_indices) / (n - 1)
+  phi_minus <- colSums(weighted_preference_indices) / (n - 1)
+
+  # Determine the partial ranking
+  partial_ranking <- matrix("", nrow = n, ncol = n)
+  tolerance <- .Machine$double.eps ^ 0.5 # Small tolerance for comparisons
+  for (i in 1:n) {
+    for (j in 1:n) {
+      if (i == j) {
+        partial_ranking[i, j] <- "="
+      } else if (phi_plus[i] > phi_plus[j] + tolerance && phi_minus[i] < phi_minus[j] - tolerance) {
+        partial_ranking[i, j] <- "P" # i is preferred against j
+      } else if (phi_plus[i] < phi_plus[j] - tolerance && phi_minus[i] > phi_minus[j] + tolerance) {
+        partial_ranking[i, j] <- "Q" # j is preferred against i
+      } else if (abs(phi_plus[i] - phi_plus[j]) < tolerance && abs(phi_minus[i] - phi_minus[j]) < tolerance) {
+        partial_ranking[i, j] <- "I" # i and j are indifferent
+      } else {
+        partial_ranking[i, j] <- "R" # i and j are not comparable
+      }
+    }
+  }
+
+  # Ranking on Phi+ values
+  phi_plus_ranking <- rank(-phi_plus, ties.method = tiesmethod)
+  names(phi_plus_ranking) <- rownames(dmatrix)
+
+  results <- list(
+    Phi_plus = phi_plus,
+    Phi_minus = phi_minus,
+    Partial_Ranking = partial_ranking,
+    rank = phi_plus_ranking
+  )
+  return(results)
+}

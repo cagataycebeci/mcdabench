@@ -1,0 +1,15 @@
+Package: mcdabench
+Type: Package
+Title: Benchmarking for Multi-Criteria Decision Analysis
+Version: 1.1.1
+Date: 2025-6-15
+Authors@R: c(person("Cagatay", "Cebeci", email = "cebecicagatay@gmail.com", role = c("aut", "cre"))) 
+Author: Cagatay Cebeci [aut, cre]
+Maintainer: Cagatay Cebeci <cebecicagatay@gmail.com>
+Description: Performs and benchmarks for various Multi-Criteria Decision Analysis (MCDA) methods. The methods are designed to evaluate and rank alternatives based on multiple criteria, applying various normalization, weighting, and aggregation algorithms. The MCDA methods includes ARAS, AROMAN, COCOSO, CODAS, COPRAS, EDAS, ELECTRE family (I-IV), FUCA, GRA, MABAC, MAIRCA, MARCOS, MAUT, MAVT, MEGAN, MOORA, OCRA, ORETES, PROMETHEE family (I - VI), RAM, ROV, SMART, TOPSIS, VIKOR, WASPAS, WPM, WSM and others, facilitating flexible and efficient analyses for multi-criteria problems. Constructs the common comparison measures such as Spearman rank correlations, Salabun-Urbaniak weight similarities (WS), index of agreement, Wilcoxon rank sum test, Jensen-Shannon Divergence based permutation tests and entropy differences based bootstrap tests for pairwise comparisons in addition to various sensitivity and stability analyses. The weight sensitivity analysis is made using either gradual and random weight modification method.
+Depends: R (>= 4.5.0)
+License: GPL (>= 2)
+LazyData: true
+Imports: factoextra, ggplot2, gplots, igraph,  monochromeR, networkD3
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr

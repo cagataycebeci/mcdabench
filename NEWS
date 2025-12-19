@@ -1,0 +1,27 @@
+# mcdabench 0.1.5 (2025-02-16)
+
+* Changes:
+    - The normalization function was updated. 
+    - The vignette updated to compare the existing MCDM methods available in the package.
+* New features:
+    - The normalization method based on MEREC was added to the normalize function.
+    - The normalization method based on geometric mean was added to the normalize function.
+
+# mcdabench 1.0.1 (03-12-2025)
+
+* New features:
+    - The kwtcomp function for applying Kruskall-Wallis Test to compare differences between the rankings by multiple MCDA methods or scenarios.
+
+# mcdabench 1.0.2 (04-15-2025)
+* New features:
+    - The rankentropycomp function to apply an entropy-based comparison for differences between the rankings by multiple MCDA methods or scenarios.
+
+# mcdabench 1.0.3 (05-30-2025)
+
+* New features:
+    - A new vignette was added to demonstrate decision making with the results from multiple MCDA methods.
+
+# mcdabench 1.1.1 (07-17-2025)
+
+* Submission to CRAN:
+    - The package was submitted to the CRAN. 
