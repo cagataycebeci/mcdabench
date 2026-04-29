@@ -1,0 +1,13 @@
+citHeader("To cite mcdabench in publications use:")
+
+bibentry(
+  bibtype = "Article",
+  title   = "Multi-criteria evaluation with gradual-weighting and aggregation of normalised distance matrices: a case study in renewable energy grid selection",
+  author  = c(person("Cagatay", "Cebeci")),
+  year    = "2026",
+  journal = "PeerJ Computer Science",
+  volume  = "12",
+  pages   = "e3819",
+  doi     = "10.7717/peerj-cs.3819",
+  note    = "Cebeci, C. (2026). Multi-criteria evaluation with gradual-weighting and aggregation of normalised distance matrices: a case study in renewable energy grid selection. PeerJ Computer Science, 12:e3819. https://doi.org/10.7717/peerj-cs.3819"
+)
