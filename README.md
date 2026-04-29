@@ -1,16 +1,16 @@
 ---
 title: "mcdabench: Benchmarking for Multi-Criteria Decision Analysis"
 author: "Cagatay Cebeci"
-date: "2025-06-22"
+date: "2026-04-29"
 #output: html_document
 ---
 
 # Introduction
 
-The `mcdabench` package provides implementations of various Multi-Criteria Decision Analysis (MCDA) methods in R. These methods are designed to evaluate and rank alternatives based on 
-multiple criteria, applying normalization, weighting, and aggregation techniques. The package includes popular decision-making methods such as  ARAS, AROMAN, COCOSO, CODAS, COPRAS, EDAS, 
-ELECTRE family (I-IV), FUCA, GRA, MABAC, MAIRCA, MARCOS, MAUT, MAVT, MEGAN, MOORA, OCRA, ORETES, PROMETHEE family (I - VI), RAM, ROV, SMART, TOPSIS, VIKOR, WASPAS, WPM, WSM and many more, 
-facilitating flexible and efficient analyses for multi-criteria problems.
+Implements various Multi-Criteria Decision Analysis (MCDA) methods for benchmarking studies. These methods are designed to evaluate and rank alternatives based on 
+multiple criteria, applying normalization, weighting, and aggregation techniques. The package includes a new proposed algorithm MEGAN in addition to the popular decision-making methods 
+such as  ARAS, AROMAN, COCOSO, CODAS, COPRAS, EDAS, ELECTRE family (I-IV), FUCA, GRA, MABAC, MAIRCA, MARCOS, MAUT, MAVT, MEGAN, MOORA, OCRA, ORETES, PROMETHEE family (I - VI), 
+RAM, ROV, SMART, TOPSIS, VIKOR, WASPAS, WPM, WSM and many more, facilitating flexible and efficient analyses for multi-criteria problems.
 
 # Install mcdabench
 
