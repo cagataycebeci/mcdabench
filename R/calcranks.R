@@ -3,7 +3,7 @@ calcranks <- function(rankmatrix, rankmethod = "score") {
   n <- ncol(rankmatrix)  
   m <- nrow(rankmatrix)  
 
-  # Initialize the A-score matrix (S_A in the paper)
+  # Initialize the A-score matrix
   ascores <- matrix(0, nrow = n, ncol = n)
   colnames(ascores) <- colnames(rankmatrix)
   rownames(ascores) <- colnames(rankmatrix)
@@ -27,10 +27,8 @@ calcranks <- function(rankmatrix, rankmethod = "score") {
   }
 
   # Calculate ranks based on the specified method
-  # Rating skorlarını tutacak vektör
   rscores <- numeric(n)
-  names(rscores) <- rownames(ascores) # Alternatif isimlerini ata
-
+  names(rscores) <- rownames(ascores)
   if (rankmethod == "score") {
     for (i in 1:n) {
       rscores[i] <- sum(ascores[i, ])
